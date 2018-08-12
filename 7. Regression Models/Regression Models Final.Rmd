@@ -1,0 +1,292 @@
+---
+title: "Effect of Transmission Types on Fuel Efficiency"
+author: "Junyoung Kim"
+date: "Mar. 11, 2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(kableExtra) # knitr table package
+library(Hmisc) # rcorr package
+library(car) # residual test package
+```
+
+## Summary
+
+> This study examines the effect of transmission type on fuel efficiency of cars using 1974 Motor Trend US magazine data. Based on its model choice creteria, this study takes horsepower as a co-determinant of miles per gallon(mpg) while maintaining auto/manual transmission type as the main independent variable. After taking natural logs on the values of mpg and horsepower to reshape their correlation more linear, the model shows that manual transmission has some positive effect in fuel efficiency while horsepower keeps a strong negative correlation with mpg.
+
+## 1. Exploratory Overview
+
+It is usually believed that manual transmission of cars tend to be more fuel-efficient than automatic transmission. This article aims to examine whether this belief is true, and if so, how better it is. The data being used is 1974 *Motor Trend* US magazine data, which is composed of 32 cars with 11 variables. The variables vary in types, and highly correlated to each other. 
+
+```{r, variable types, echo=FALSE}
+data(mtcars)
+
+# Data Summary
+t1 <- as.table(rbind(colnames(mtcars), c("continuous", "discrete", "continuous", "continuous", "continuous", "continuous", "continuous", "categorical", "categorical", "discrete", "discrete"), c("-", "4, 6, 8", "-", "-", "-", "-", "-", "0, 1", "0, 1", "3, 4, 5", "1 - 8"))) 
+                     
+dimnames(t1) <- list(c("Variable", "Type", "Level"), c("MPG", "Cylinder", "Displacement", "Horsepower", "Rear Axle Ratio", "Weight", "1/4 Mile Time", "Engine V/S", "Auto/Manual", "Gear", "Carburetor"))
+
+knitr::kable(t1, format = "latex", align = 'c', booktabs = T, caption = "List of Variables") %>%
+        kable_styling(latex_options = c("hold_position", "scale_down")) %>%
+        column_spec(2, border_left=T)
+```
+
+```{r, correlation, echo=FALSE}
+corrs <- rcorr(as.matrix(mtcars[,2:11]), type="pearson") # calculate correlation
+cor.mat <- round(corrs$r, 3) # correlation matrix
+t2 <- as.table(cor.mat)
+knitr::kable(t2, format = "latex", align = 'c', booktabs = T, caption = "Correlation Matrix") %>%
+        kable_styling(latex_options = c("hold_position")) %>%
+        column_spec(2, border_left=T)
+```
+
+
+## 2. Building Research Model
+
+Regression of mpg on transmission type(am) shows a significant positive estimated effect(Coefficient= 7.245, $p$=0.0003, Table 3) but really does not explain much of mpg($R^2$=0.3385). It is not surprising because transmission type is a simple two-level factor, and there are several factors determine fuel efficiency in reality. 
+
+```{r, am-all comparison, echo=FALSE}
+sum.am <- summary(lm(mpg~as.factor(am), mtcars))
+sum.all <- summary(lm(mpg~., mtcars))
+all.coef <- round(c(sum.all$coefficients[,1], sum.all$adj.r.squared),3)
+all.p <- c(round(sum.all$coefficients[,4], 3), "")
+am.coef <- c(round(sum.am$coefficients[1,1],3), "", "", "", "", "", "", "", 
+             round(sum.am$coefficients[2,1],3), "", "", 
+             round(sum.am$adj.r.squared, 3))
+am.p <- c(round(sum.am$coefficients[1,4],5), "", "", "", "", "", "", "", 
+          round(sum.am$coefficients[2,4],5), "", "", "")
+t3 <-  as.table(cbind(all.coef, all.p, am.coef, am.p))
+dimnames(t3) <- list(c(rownames(t3)[1:11], "R-squared"),
+                     c("Coeffient", "p-value", "Coeffient", "p-value"))
+knitr::kable(t3, format = "latex", align = 'c', booktabs = T,
+             caption = "Test Regression Comparison") %>%
+             kable_styling(latex_options = c("hold_position"), 
+                           position = "float_right") %>%
+             column_spec(c(2,4), border_left=T) %>%
+             add_header_above(c(" " = 1, "All" = 2, "Transmission Only" = 2))
+```
+
+In order to capture the effect of transmission type on mpg better, we need to bring other predictors together. But, the **strong correlations among variables** matter at this point (see Table 2). Taking them all causes **overfitting**. In table 3, none of the all-variable model shows statistical significance despite high explanatory power($R^2$=0.807). A good model should, **A.** explain variance of dependent variable(mpg) well ehough, **B.** keep statiatical significance of explanatory variable(am), **C.** be theoretically resonable. Considering these creteria, this research builds a research model with two distinct factors: **1. taking transmission type and log(horsepower) as regressors**, and **2. setting log(mpg) as outcome instead of mpg**.   
+$$\newline$$
+
+> **Model:** $\ln MPG = \beta_0 + \beta_1 Transmission + \beta_2 \ln Horsepower + \varepsilon$  
+
+#### Horsepower
+
+Theoretically, we can categorize determinants of fuel efficiency into engine, drivetrain, and weight. As we can see in Table 4, engine-related variables have high correlations, so, it can be a better strategy to choose one component which can represent the rest. 
+In this model, horsepower(hp) is chosen because it has the highest correlations (total 4.096) with other engine components, and also shows relatively lower risk of multicollinearity with transmission type(VIF= 1.063, $R^2$ = 0.059).    
+
+```{r, corr with am, echo=FALSE}
+corrs <- rcorr(as.matrix(mtcars[,2:11]), type="pearson") # calculate correlation
+cor.mat <- round(corrs$r, 3) # correlation matrix
+p.mat <- round(corrs$P, 3) # correlation p-value matrix
+
+# multicollinearity test
+mt.cyl <- lm(am~cyl, mtcars)
+mt.disp <- lm(am~disp, mtcars)
+mt.hp <- lm(am~hp, mtcars)
+mt.cyl <- lm(am~cyl, mtcars)
+mt.vs <- lm(am~vs, mtcars)
+mt.carb <- lm(am~carb, mtcars)
+
+vif.am.cyl <- 1 / (1- summary(mt.cyl)$r.squared)
+vif.am.disp <- 1 / (1 - summary(mt.disp)$r.squared)
+vif.am.hp <- 1 / (1 - summary(mt.hp)$r.squared) 
+vif.am.vs <- 1 / (1 - summary(mt.vs)$r.squared)
+vif.am.carb <- 1 / (1- summary(mt.carb)$r.squared)
+
+vifs <- round(c(vif.am.cyl, vif.am.disp, vif.am.hp, vif.am.vs, vif.am.carb),3)
+r2s <- round(c(summary(mt.cyl)$r.squared, summary(mt.disp)$r.squared,
+               summary(mt.hp)$r.squared, summary(mt.vs)$r.squared,
+               summary(mt.carb)$r.squared),3)
+
+# engine-related variables only 
+t4 <- as.matrix(cbind(cor.mat[c(1,2,3,7,10),1], cor.mat[c(1,2,3,7,10),2],
+                    cor.mat[c(1,2,3,7,10),3], cor.mat[c(1,2,3,7,10),7], 
+                    cor.mat[c(1,2,3,7,10),10], vifs, r2s))
+t4 <- rbind(t4, c(colSums(abs(t4))[1:5], NA, NA))
+dimnames(t4) <- list(c("Cylinder", "Displacement", "Horsepower", 
+                       "V-type/Serial", "Carburetor", "Total(absolute)"), 
+                     c("Cylinder", "Displacement", "Horsepower", 
+                       "V-type/Serial", "Carburetor", "VIF with AM", "R-sqaured"))
+
+knitr::kable(t4, format = "latex", booktabs = T,
+             caption = "Correlations among Engine-related Variables") %>%
+             kable_styling(latex_options = c("hold_position", "scale_down")) %>%
+             column_spec(c(2,7), border_left=T)
+```
+
+#### Why log-log?
+
+The plots below compare the distribution of mpg and horsepower-mpg correlation, ones with logs and the others without. It is quite obvious that the original plots are more skewed. Taking logs on both terms linearizes the plot, normalizes the distribution, reduce effects of possible outliers, and makes interpretation of coefficients easier(percent by percent changes). Luckily, we can take logs without losing observations because all values are positive.
+
+```{r, echo=FALSE, fig.height = 2.5, fig.width = 8, fig.align="center"}
+par(mfrow=c(1,2), mar=c(4.1, 4.1, 0.1, 2.1))
+# hp
+plot(mpg~hp, mtcars, pch=19, col="black", xlab = "Horsepower", 
+     cex.main = 0.9, cex.lab=0.9, cex.axis=0.8) # linear
+abline(lm(mpg~hp, mtcars), lty=2, lwd=2, col="gray")
+lines(lowess(mtcars$hp,mtcars$mpg), lty=1, lwd=2, col="gray40")
+plot(log(mpg)~log(hp), mtcars, pch=19, col="black", xlab = "log(Horsepower)",
+     cex.main = 0.9, cex.lab=0.9, cex.axis=0.8) # log-log
+abline(lm(log(mpg)~log(hp), mtcars), lty=2, lwd=2, col="gray")
+lines(lowess(log(mtcars$hp),log(mtcars$mpg)), lty=1, lwd=2, col="gray40")
+
+par(mfrow=c(1,2), mar=c(4.1, 4.1, 2.1, 2.1))
+hist(mtcars$mpg, breaks=10, main="", col="gray", xlab="mpg", 
+     cex.lab=0.9, cex.axis=0.8)
+hist(log(mtcars$mpg), breaks=10, main="", col="gray40", xlab="log(mpg)", 
+     cex.lab=0.9, cex.axis=0.8)
+par(mfrow=c(1,1))
+
+par(mfrow=c(1,1), mar=c(5.1, 4.1, 4.1, 2.1))
+```
+    
+
+#### Model Comparison 
+In addition to engine-related variables, weight and rear axle ratio are also regarded as determinants of mpg in general. We can think of two alternative models with those two variables:
+    
+**Alternative 1:** $\ln MPG = \beta_0 + \beta_1 Transmission + \beta_2 \ln Horsepower + \beta_3 \ln Weight + \varepsilon$    
+**Alternative 2:** $\ln MPG = \beta_0 + \beta_1 Transmission + \beta_2 \ln Horsepower + \beta_3 \ln Weight + \ln RearAxelRatio + \varepsilon$  
+
+As mentioned above, one of the most crucial quality of a good model is statistical significance of transmission type. The alternatives show somewhat enhanced explanatory powers(adjusted $R^2$ in **Table 5**), however, they seriously weaken the statistical significance of the main independent variable($p$-value of auto/manual). Multicollinearity of log(weight) seems to be the biggest cause of this problem(**Table 6**). The VIF score of log(weight) is high($\sqrt{VIF}$ > 2), and it also increases multicollinearity of other terms.
+
+```{r, echo=FALSE}
+# model comparison
+
+# Research model
+m1 <- lm(log(mpg)~as.factor(am)+log(hp), data=mtcars)
+
+# we already have m1(am+hp) above
+m2 <- lm(log(mpg)~as.factor(am)+log(hp)+log(wt), data=mtcars)
+m3 <- lm(log(mpg)~as.factor(am)+log(hp)+log(wt)+log(drat), data=mtcars)
+
+# summarize models
+sm1 <- summary(m1)
+sm2 <- summary(m2)
+sm3 <- summary(m3)
+
+# calculate p-value of fstatistics
+sm1.pf <- 1-pf(sm1$fstatistic[1], sm1$fstatistic[2], sm1$fstatistic[3])
+sm2.pf <- 1-pf(sm2$fstatistic[1], sm2$fstatistic[2], sm2$fstatistic[3])
+sm3.pf <- 1-pf(sm3$fstatistic[1], sm3$fstatistic[2], sm3$fstatistic[3])
+
+# tabulate
+t5 <- as.table(rbind(c(sm1$adj, sm1$df[2], sm1$fstat[1], 
+                       sm1.pf, summary(m1)$coef[2,4]),
+                     c(sm2$adj, sm2$df[2], sm2$fstat[1], 
+                       sm2.pf, summary(m2)$coef[2,4]),
+                     c(sm3$adj, sm3$df[2], sm3$fstat[1], 
+                       sm3.pf, summary(m3)$coef[2,4]))
+               ) # make a table with necessary values
+
+t5 <- round(t5, 3)
+
+dimnames(t5) <- list(c("Model", 
+                       "Alternative 1", 
+                       "Alternative 2"), 
+                     c("adjusted R2", "Degree of Freedom", "F-statistic", 
+                       "F-stat p-value", "p-value of Auto/Manual"))
+knitr::kable(t5, format = "latex", align = 'c', booktabs = T,
+             caption = "Explanatory Power Comparison") %>%
+        kable_styling(latex_options = c("hold_position", "scale_down")) %>%
+        column_spec(c(2,6), border_left=T)
+```
+
+```{r, echo=FALSE}
+# heteroskedasticity test
+sm1.bp <- lmtest::bptest(m1)
+sm2.bp <- lmtest::bptest(m2)
+sm3.bp <- lmtest::bptest(m3)
+
+# multicollinearity with am comparison
+t6 <- as.table(rbind(c(round(vif(m1),3), "", "", round(sm1.bp$p.va,3)),
+                     c(round(vif(m2),3), "", round(sm2.bp$p.va,3)),
+                     c(round(vif(m3),3), round(sm3.bp$p.va,3))))
+dimnames(t6) <- list(c("Model", "Alternative 1", "Alternative 2"),
+                     c("Auto/Manual", "log(Horsepower)", "log(Weight)", 
+                       "log(RearAxleRatio)", "Breusch-Pagan p-value"))
+knitr::kable(t6, format = "latex", align = 'c', booktabs = T,
+             caption = "Multicollinearity(VIF test) and Heteroskedasticity(BP test)") %>%
+        kable_styling(latex_options = c("hold_position", "scale_down")) %>%
+        column_spec(c(2,6), border_left=T)
+```
+
+In terms of Heteroskedasticity, all three models fail to reject the null hypothesis of homogeneity of variance(Breusch-Pagan p-value in **Table 5**). But we can still find a noticeable difference that the alternatives barely lies within the assumption of homoscedasticity($p$ = 0.078, 0.176) while the model holds with much higher probability($p$ = 0.536).  
+  
+As we have seen so far, regressing log(mpg) on transmission type and log(horsepower) seems to be a simple but better model. 
+
+
+## 3. Analysis
+
+#### Regression Results and Interpretation
+```{r, echo=FALSE}
+# Regression Results
+t7 <- as.table(round(summary(m1)$coef, 3))
+dimnames(t7) <- list(c("Intercept", "Auto/Manual: 1", "log(Horsepower)"),
+                     c("Coefficient", "Standard Error", "t-value", "p-value"))
+knitr::kable(t7, format = "latex", align = 'c', booktabs = T,
+             caption = "Regression Results on log(MPG)") %>%
+        kable_styling(latex_options = c("hold_position")) %>%
+        column_spec(2, border_left=T)
+```
+
+Table 6 shows the results. While log(horsepower) shows a strong negative relation with log(mpg)(-0.459), auto/manual holds a modreate positive coefficient(0.195). Low p-values of both regressors(0.001, 0.000) imply their solid statistical significance. Since both horsepower and mpg are log-transformed, the meaning of coefficient should be interpreted as changes in percent values: **for 1 percent increase of horsepower, mpg decreases approximately by 0.459 percent on average**. The transmission type(0 or 1) is not log-transformed, therefore, the effect should be interpreted as **manual transmissions(value = 1) have approximately 19.5%**($100 * \beta_1$%) **better fuel efficiency on average than automatic transmissions.** 
+
+
+```{r, echo=FALSE, fig.height= 4, fig.width=4, fig.align="center"}
+# Regression plot
+plot(log(mpg)~log(hp), mtcars, pch=19, col="gray80",
+     xlab="log(Horsepower)", ylab="log(mpg)",
+     main="MPG Difference by Auto/Manual",
+     cex.main = 0.8, cex.lab=0.8, cex.axis = 0.8) # set base first 
+
+# prediction 1: am=0 (auto)
+hp.new <- min(mtcars$hp):max(mtcars$hp) # step1: new x values
+am0 <- rep(0, length(hp.new)) # step2: new x2 values
+data0 <- data.frame(hp.new, am0) # step3: combine x, x2
+colnames(data0) <- c("hp", "am") # step4: make names the same as the model
+y0 <- predict(m1, newdata=data0) # step5: predict y values = model outputs
+lines(log(hp.new), y0, lty=1, lwd=2, col="gray40") # draw
+
+# prediction 2: am=1 (manual), step1 already exists above
+data1 <- data.frame("hp"=hp.new, "am"=rep(1, length(hp.new))) # step2~4 at once
+y1 <- predict(m1, newdata=data1) # step5: predict y values = model outputs
+lines(log(hp.new), y1, lty=1, lwd=2, col="black") # draw
+
+# legend
+legend("bottomleft", c("Auto","Manual"), lty=1, lwd=3, col=c("gray60","black"),
+       bty = "n")
+```
+
+#### Residual Diagnostics
+
+The plots below examine the residuals of the research model in order to detect violation of Gauss-Markov Theorem. As we can see in the Q-Q Plot, the residuals are distributed almost normally. The residual fit(green dot line) of in the Spread Level Plot is flat-like, and it implies the homogeniety of the residual variance. We can also look back **Table 6** to see the result of heteroskedasticity test($p$ = 0.536), which is high enough to hold the $H_0$: Homoscedasticity. 
+
+> **Model:** *Transmission + ln(Horsepower) + ln(Weight)*
+
+```{r, fig.height = 4, fig.width=8, echo=FALSE, results='hide',fig.keep='all'}
+par(mfrow=c(1,2))
+qqPlot(m1, pch=19, col="black", main="Q-Q Plot", cex.main=0.8, cex.lab=0.8, cex.axis=0.8)
+spreadLevelPlot(m1, main = "Spread Level Plot", cex.main=0.9, cex.lab=0.8, cex.axis=0.8)
+par(mfrow=c(1,1))
+```
+
+## 4. Conclusion 
+
+**To sum up, this research shows that manual transmission is more fuel efficient than automatic transmission, by 19.5% on average.** The uncertainty of the model is very small as the p-values of estimates assure(0.000, 0.001. see **Table 7**), and the confidence interval of each estimate does not include zero, which means that the probability of each regressor having no effect on mpg is very small. (**Table 8**) However, we should avoid generalizing the outcomes over the car models today because the data is very small and limited within some models of specific years(1973-74). From selection bias to epistemic uncertainty, there are undeniable possiblity of drawing biased results, and it can be cleared only with using more elaborate models based on extensive data. 
+
+```{r, table, echo=FALSE}
+ci <- confint(m1)
+
+t8 <- as.table(rbind(c(ci[2,1], ci[2,2]), c(ci[3,1], ci[3,2])))
+t8 <- round(t8, 3)
+dimnames(t8) <- list(c("Auto/Manual", "log(Horsepower)"),c("2.5%", "97.5%"))
+knitr::kable(t8, format = "latex", align = 'c', booktabs = T,
+             caption = "Confidence Interval of Estimates") %>%
+        kable_styling(latex_options = c("hold_position")) %>%
+        column_spec(2, border_left=T)
+```
+ 
