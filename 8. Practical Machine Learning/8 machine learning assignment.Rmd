@@ -393,25 +393,11 @@ To sum up, **Random Forest** is the best classifier. The performance of Random F
 ```{r, test set rf, echo=FALSE}
 print("Random Forest Accuracy with Test Set")
 ts.accu.rf
+print("In-sample Error")
+1 - tr.accu.rf
+print("Out-of-sample Error")
+1 - ts.accu.rf
 ```
 
 <br>
 <br>
-
-## Making Prediction with Testing Dataset
-At last, we can make predictions with Testing Data(pml-testing) using Random Forest.
-
-```{r, pml-testing, echo=FALSE}
-# apply the model to the testing data and predict classes        
-data.testing <- read.csv(testFile, na.strings=c("NA","","#DIV/0!"))        
-data.testing <- data.testing[,-nacols]
-
-testing <- predict(pca.data, data.testing[,-53])
-pr.testing.treebag <- predict(mod.treebag, testing)
-pr.testing.rf <- predict(mod.rf, testing)
-pr.testing.qda <- predict(mod.qda, testing)
-pr.testing.svmRadial <- predict(mod.svmRadial, testing)
-
-print("Random Forest Prediction with 'pml-testing' Dataset")
-pr.testing.rf
-```
