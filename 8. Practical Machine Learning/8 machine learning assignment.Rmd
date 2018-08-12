@@ -401,3 +401,20 @@ print("Out-of-sample Error")
 
 <br>
 <br>
+
+## Prediction: Applying to pml-training Data
+```{r. pml-testing, echo=FALSE}
+# apply the model to the testing data and predict classes        
+data.testing <- read.csv(testFile, na.strings=c("NA","","#DIV/0!"))        
+data.testing <- data.testing[,-nacols]
+data.testing <- predict(standardize.data, data.testing)
+
+testing <- predict(pca.data, data.testing[,-53])
+pr.testing.treebag <- predict(mod.treebag, testing)
+pr.testing.rf <- predict(mod.rf, testing)
+pr.testing.qda <- predict(mod.qda, testing)
+pr.testing.svmRadial <- predict(mod.svmRadial, testing)
+
+print("pml-testing Data Class Prediction with Random Forest")
+pr.testing.rf
+```

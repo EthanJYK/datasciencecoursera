@@ -250,6 +250,7 @@ t2 <- as.table(rbind(round(ensemble.tr.accuracy,3), round(ensemble.cv.accuracy,3
 # apply the model to the testing data and predict classes        
 data.testing <- read.csv(testFile, na.strings=c("NA","","#DIV/0!"))        
 data.testing <- data.testing[,-nacols]
+data.testing <- predict(standardize.data, data.testing)
 
 testing <- predict(pca.data, data.testing[,-53])
 pr.testing.treebag <- predict(mod.treebag, testing)
