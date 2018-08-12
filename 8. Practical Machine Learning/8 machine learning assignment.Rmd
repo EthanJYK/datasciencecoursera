@@ -3,12 +3,15 @@ title: Data Classification Exercise
 author: "Junyoung Kim"
 date: "August, 10, 2018"
 output: html_document
+keep_md: true
 ---
 
 ```{r setup, include=FALSE, echo=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(dplyr); library(caret); library(ggplot2); library(tictoc); library(kableExtra)
-load("8 machine learning assignment.RData") # loading workspace image to speed up
+# load("8 machine learning assignment.RData") # loading workspace image to speed up
+# If you download this file and run everything from scratch, please don't forget to set
+# all eval=TRUE to TRUE in all chunks.
 ```
 
 <br>
@@ -19,7 +22,7 @@ load("8 machine learning assignment.RData") # loading workspace image to speed u
 This paper is written as an assignment of Johns Hopkins University Machine Learning Class. It takes a set of accelerometer data which is recorded during 6 participants' barbell lift performances and examines it using different machine learning models. The goals of this study are to predict the manner in which they did the exercise and to determine
 which model is the best classifier based on their predictions.  
 
-```{r, getting data, eval=FALSE, echo=FALSE}
+```{r, getting data, eval=TRUE, echo=FALSE}
 # Get files
 folder <- getwd()
 trainURL <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
@@ -74,7 +77,7 @@ str(a)
 
 There are total 100 NA variables. And there are also some useless variables like index, time, user name, etc. Time data is not an important factor here since all observations are chosen regardless of time order. By removing all unimportant variables, we can cut down the data and make it one with 53 variables including one dependent variable($classe).  
 
-```{r, data, eval=FALSE, echo=FALSE}
+```{r, data, eval=TRUE, echo=FALSE}
 ## choose NA data
 nacols <- apply(basedata, 2, max) %>% is.na %>% which
 ## choose unnecessary data
@@ -91,7 +94,7 @@ dim(data)
 
 Another good way of saving computing costs is standardizing the data and reducing dimensions with PCA. In order to preserve as much information as possible, The following PCA process keeps 99% of the variance of the initial data. In advance of reducing dimensions, we also need to split data into training, cross-validation, and testing sets, because the same reduction process applied to the training set should be applied to the rests. Here the process splits the data with 3:1:1 ratio.
 
-```{r, standardization and PCA, eval=FALSE, echo=FALSE}
+```{r, standardization and PCA, eval=TRUE, echo=FALSE}
 # standardization
 ## automatically ignore factor-labeled values
 standardize.data <- preProcess(data, method=c("center", "scale")) 
@@ -155,7 +158,7 @@ There are numerous methods of training data. Considering data type of the 5 clas
 - Stochastic Gradient Boosting (method = 'gbm')
 - Naive Bayes (method = 'nb)
 
-```{r, main functions, eval=FALSE, echo=FALSE}
+```{r, main functions, eval=TRUE, echo=FALSE}
 # CHANGE OPTIONS eval=TRUE if you want to run the code below while knitting
 # train, test, and record errors  
 ## train-cv, result record function 
@@ -231,7 +234,7 @@ kable(t1, caption="Model Accuracy") %>%
         kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))
 ```
 
-```{r, barplot png creation, eval=FALSE, echo=FALSE}
+```{r, barplot png creation, eval=TRUE, echo=FALSE}
 # plot model training, cv results
 png("barplot1.png", width=900, height=450)
 bar.df <- t(as.matrix(results[, 2:3]))
@@ -265,7 +268,7 @@ Among all 12 models, Random Forest shows the best performance with crossvalidati
 #### Step 2: Ensemble
 In Step 1, we can find some weak classifiers (> 0.5). This study chose 5 methods as a source(qda, mlp, multinom, gbm, nb). Since Adaboost doesn't work with multinomial data, this study tries to emsemble them with Generalized Additive Model (method='gam') and Multinomial Regression (method='multinom'). Elapsed times of 5 methods add up to 2465.36 seconds, which is a little shorter than Random Forest (2505.26 sec), so we can compare the performance of two methods fairly if the ensembling process doesn't take so much time.  
 
-```{r, ensemble, eval=FALSE, echo=FALSE}
+```{r, ensemble, eval=TRUE, echo=FALSE}
 # Ensemble
 ## get training prediction results
 predicted.tr <- as.data.frame(matrix(nrow=dim(tr)[1], ncol=length(models)))
@@ -363,7 +366,7 @@ kable(t2, caption="Ensemble Model Accuracy") %>%
 
 As interesting result has come out that multinomial regression recorded almost twice better accuracy in both training and crossvalidation sets. However, both of them are still worse than Random Forest alone, even than Tree with Bagging or SVM with Gaussian Kernel, and similar with Quadratic Discriminant Analysis which only takes 4.72 seconds alone.   
 
-```{r, final plot creation, eval=FALSE, echo=FALSE}
+```{r, final plot creation, eval=TRUE, echo=FALSE}
 # final plot
 png("barplot2.png", width=900, height=450)
 bar.final <- t(as.matrix(c(cv.accuracy[c(2, 5, 7, 9, 10, 11)], ensemble.cv.accuracy)))
