@@ -1,0 +1,13 @@
+name: Text_Prediction
+title: Text_Prediction
+username:
+account: ethanjyk
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 638966
+bundleId: 1812949
+url: https://ethanjyk.shinyapps.io/Text_Prediction/
+when: 1547459763.1089
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: app - 복사본.R|bg.jpg|functions - 복사본.R|global.R|data/capstone_data_final- 과압축.RData|data/capstone_data_final - 최근백업.RData|data/capstone_data_final - 최초백업.RData|www/bootstrap.css|www/bootstrap.min.css
